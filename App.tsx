@@ -90,11 +90,11 @@ type Status = 'idle' | 'recording' | 'transcribing' | 'translating' | 'chatting'
 
 // --- Main App Component ---
 
-const LANGUAGES = ['Irish', 'German', 'Spanish', 'Portuguese'];
+const LANGUAGES = ['Irish Gaelic', 'German', 'Spanish', 'Portuguese'];
 
 const getFlagForLanguage = (lang: string): string => {
     switch (lang) {
-        case 'Irish': return '🇮🇪';
+        case 'Irish Gaelic': return '🇮🇪';
         case 'German': return '🇩🇪';
         case 'Spanish': return '🇪🇸';
         case 'Portuguese': return '🇵🇹';
