@@ -90,10 +90,11 @@ type Status = 'idle' | 'recording' | 'transcribing' | 'translating' | 'chatting'
 
 // --- Main App Component ---
 
-const LANGUAGES = ['Irish Gaelic', 'German', 'Spanish', 'Portuguese'];
+const LANGUAGES = ['Swedish', 'Irish Gaelic', 'German', 'Spanish', 'Portuguese'];
 
 const getFlagForLanguage = (lang: string): string => {
     switch (lang) {
+        case 'Swedish': return '🇸🇪';
         case 'Irish Gaelic': return '🇮🇪';
         case 'German': return '🇩🇪';
         case 'Spanish': return '🇪🇸';
@@ -449,7 +450,7 @@ export default function App() {
   
   const isProcessing = status === 'transcribing' || status === 'translating';
   const statusText = {
-    idle: "Tap to record",
+    idle: "Ready",
     recording: "Recording...",
     transcribing: "Transcribing your speech...",
     translating: "Translating to " + language + "...",
@@ -460,16 +461,15 @@ export default function App() {
     <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-4 font-sans">
       <div className="w-full max-w-2xl mx-auto flex flex-col items-center text-center">
         
-        <h1 className="text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-teal-300">
-          MultiLingo
+        <h1 className="text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-teal-300">
+          Cupla
         </h1>
         <p className="mt-2 text-lg text-gray-400">
-          Record your voice, get the translation, and ask follow-up questions.
+            Record your voice, get the translation, and ask follow-up questions.
         </p>
 
         <div className="mt-8 w-full max-w-xs">
           <label htmlFor="language-select" className="block text-sm font-medium text-gray-400 mb-2">
-            Language:
           </label>
           <select
             id="language-select"
