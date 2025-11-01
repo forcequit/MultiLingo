@@ -1,0 +1,7 @@
+{
+  "name": "MultiLingo",
+  "description": "",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
