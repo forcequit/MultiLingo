@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { blobToBase64, decode, decodeAudioData } from './utils/audio';
 import { GoogleGenAI, HarmCategory, HarmBlockThreshold, Modality, Content } from "@google/genai";
@@ -67,11 +68,12 @@ const PauseIcon = () => (
   </svg>
 );
 
-const TrashIcon = () => (
+const CloseIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
-    <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.124-2.033-2.124H8.033c-1.12 0-2.033.944-2.033 2.124v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
   </svg>
 );
+
 
 const SendIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
@@ -90,7 +92,7 @@ type Status = 'idle' | 'recording' | 'transcribing' | 'translating' | 'chatting'
 
 // --- Main App Component ---
 
-const LANGUAGES = ['Swedish', 'Irish Gaelic', 'German', 'Spanish', 'Portuguese'];
+const LANGUAGES = ['Irish Gaelic', 'Swedish', 'German', 'Spanish', 'Portuguese'];
 
 const getFlagForLanguage = (lang: string): string => {
     switch (lang) {
@@ -114,6 +116,7 @@ export default function App() {
   const [audioData, setAudioData] = useState<Uint8Array | null>(null);
   const [audioDataForText, setAudioDataForText] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
+  const [audioError, setAudioError] = useState<string | null>(null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -157,6 +160,7 @@ export default function App() {
     setAudioData(null);
     setAudioDataForText('');
     setError(null);
+    setAudioError(null);
     setChatInput('');
     setStatus('idle');
   }, [isAudioPlaying, cleanupAudioAnalysis]);
@@ -231,6 +235,7 @@ export default function App() {
         setStatus('chatting');
         setAudioData(null);
         setAudioDataForText('');
+        setAudioError(null);
       });
 
     } catch (err: any) {
@@ -341,6 +346,8 @@ export default function App() {
       return;
     }
     if (isFetchingAudio) return;
+    
+    setAudioError(null);
 
     const lastModelMessage = [...displayConversation].filter(m => m.role === 'model').pop();
     if (!lastModelMessage || !lastModelMessage.text) return;
@@ -362,7 +369,7 @@ export default function App() {
         setIsAudioPlaying(true);
       } catch (err) {
         console.error("Error playing audio:", err);
-        setError("Failed to play audio. The data may be corrupted.");
+        setAudioError("Failed to play audio. The data may be corrupted.");
         setIsAudioPlaying(false);
       }
     };
@@ -373,7 +380,7 @@ export default function App() {
     }
 
     setIsFetchingAudio(true);
-    setError(null);
+    
     try {
       const response = await ai.models.generateContent({
         model: ttsModel,
@@ -399,7 +406,7 @@ export default function App() {
       await playBuffer(speechData);
     } catch (err: any) {
       console.error("TTS Error:", err);
-      setError(err.message || "Could not generate audio.");
+      setAudioError("Audio not available, try again momentarily.");
       setAudioData(null);
     } finally {
       setIsFetchingAudio(false);
@@ -438,6 +445,7 @@ export default function App() {
       await processStream(streamResult, () => {
         setAudioData(null);
         setAudioDataForText('');
+        setAudioError(null);
       });
     } catch (err: any) {
       console.error("Chat Error:", err);
@@ -516,7 +524,7 @@ export default function App() {
                       className="text-gray-500 hover:text-gray-300 transition-colors"
                       aria-label="Clear conversation"
                     >
-                      <TrashIcon />
+                      <CloseIcon />
                     </button>
                 </div>
                 
@@ -533,7 +541,7 @@ export default function App() {
                     <div ref={conversationEndRef} />
                 </div>
                 
-                 <div className="mt-4 pt-4 border-t border-gray-700">
+                 <div className="mt-4 pt-4 border-t border-gray-700 flex items-center gap-4">
                     <button
                         onClick={handlePlayAudio}
                         disabled={isFetchingAudio || isChatLoading || displayConversation.filter(m => m.role === 'model' && m.text).length === 0}
@@ -544,6 +552,7 @@ export default function App() {
                     >
                         {isFetchingAudio ? <><ButtonSpinner /> Generating...</> : isAudioPlaying ? <><PauseIcon /> Playing</> : <><PlayIcon /> Listen</>}
                     </button>
+                    {audioError && <p className="text-sm text-amber-400">{audioError}</p>}
                  </div>
 
                 <form onSubmit={handleSendChatMessage} className="mt-4 flex items-center gap-2">
