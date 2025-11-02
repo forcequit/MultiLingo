@@ -2,6 +2,8 @@
 
 
 
+
+
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { blobToBase64, decode, decodeAudioData } from './utils/audio';
 import { GoogleGenAI, HarmCategory, HarmBlockThreshold, Modality, Content } from "@google/genai";
@@ -93,7 +95,7 @@ type Status = 'idle' | 'recording' | 'transcribing' | 'translating' | 'chatting'
 
 // --- Main App Component ---
 
-const LANGUAGES = ['Irish Gaelic', 'Swedish', 'German', 'Spanish', 'Portuguese'];
+const LANGUAGES = ['Irish Gaelic', 'Swedish', 'German', 'Spanish', 'Portuguese', 'Dutch'];
 
 const getFlagForLanguage = (lang: string): string => {
     switch (lang) {
@@ -102,6 +104,7 @@ const getFlagForLanguage = (lang: string): string => {
         case 'German': return '🇩🇪';
         case 'Spanish': return '🇪🇸';
         case 'Portuguese': return '🇵🇹';
+        case 'Dutch': return '🇳🇱';
         default: return '🌐'; // Fallback globe icon
     }
 };
