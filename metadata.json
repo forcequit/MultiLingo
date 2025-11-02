@@ -1,6 +1,6 @@
 {
-  "name": "MultiLingo",
-  "description": "",
+  "name": "Cupla",
+  "description": "Record your voice, get the translation, and ask follow-up questions.",
   "requestFramePermissions": [
     "microphone"
   ]

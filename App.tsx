@@ -1,6 +1,7 @@
 
 
 
+
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { blobToBase64, decode, decodeAudioData } from './utils/audio';
 import { GoogleGenAI, HarmCategory, HarmBlockThreshold, Modality, Content } from "@google/genai";
@@ -124,6 +125,7 @@ export default function App() {
   const conversationEndRef = useRef<HTMLDivElement | null>(null);
   const silenceTimerRef = useRef<number | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const playbackAudioContextRef = useRef<AudioContext | null>(null);
   const sourceNodeRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const animationFrameRef = useRef<number | null>(null);
 
@@ -154,6 +156,10 @@ export default function App() {
   const handleClear = useCallback(() => {
     if (isAudioPlaying && audioSourceRef.current) {
       audioSourceRef.current.stop();
+    }
+    if (playbackAudioContextRef.current && playbackAudioContextRef.current.state !== 'closed') {
+        playbackAudioContextRef.current.close().catch(console.error);
+        playbackAudioContextRef.current = null;
     }
     cleanupAudioAnalysis();
     setDisplayConversation([]);
@@ -354,7 +360,10 @@ export default function App() {
 
     const playBuffer = async (bufferData: Uint8Array) => {
       try {
-        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+        if (!playbackAudioContextRef.current || playbackAudioContextRef.current.state === 'closed') {
+            playbackAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+        }
+        const audioContext = playbackAudioContextRef.current;
         const audioBuffer = await decodeAudioData(bufferData, audioContext, 24000, 1);
         const source = audioContext.createBufferSource();
         source.buffer = audioBuffer;
@@ -363,7 +372,6 @@ export default function App() {
         source.onended = () => {
           setIsAudioPlaying(false);
           audioSourceRef.current = null;
-          audioContext.close().catch(console.error);
         };
         source.start(0);
         setIsAudioPlaying(true);
@@ -381,36 +389,51 @@ export default function App() {
 
     setIsFetchingAudio(true);
     
-    try {
-      const response = await ai.models.generateContent({
-        model: ttsModel,
-        contents: [{ parts: [{ text: lastModelMessage.text }] }],
-        config: {
-          responseModalities: [Modality.AUDIO],
-          speechConfig: {
-            voiceConfig: {
-              prebuiltVoiceConfig: { voiceName: 'Kore' },
-            },
-          },
-        },
-      });
+    const MAX_RETRIES = 3;
+    const RETRY_DELAY_MS = 500;
+    let lastError: Error | null = null;
 
-      const audioDataB64 = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-      if (!audioDataB64) {
-        throw new Error("API did not return audio data.");
-      }
-      const speechData = decode(audioDataB64);
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+        try {
+            const response = await ai.models.generateContent({
+                model: ttsModel,
+                contents: [{ parts: [{ text: lastModelMessage.text }] }],
+                config: {
+                responseModalities: [Modality.AUDIO],
+                speechConfig: {
+                    voiceConfig: {
+                    prebuiltVoiceConfig: { voiceName: 'Kore' },
+                    },
+                },
+                },
+            });
 
-      setAudioData(speechData);
-      setAudioDataForText(lastModelMessage.text);
-      await playBuffer(speechData);
-    } catch (err: any) {
-      console.error("TTS Error:", err);
-      setAudioError("Audio not available, try again momentarily.");
-      setAudioData(null);
-    } finally {
-      setIsFetchingAudio(false);
+            const audioDataB64 = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+            if (!audioDataB64) {
+                throw new Error("API did not return audio data.");
+            }
+            const speechData = decode(audioDataB64);
+
+            setAudioData(speechData);
+            setAudioDataForText(lastModelMessage.text);
+            await playBuffer(speechData);
+            lastError = null; // Success
+            break; // Exit retry loop
+        } catch (err: any) {
+            console.error(`TTS Error (Attempt ${attempt + 1}/${MAX_RETRIES}):`, err);
+            lastError = err;
+            if (attempt < MAX_RETRIES - 1) {
+                await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
+            }
+        }
     }
+
+    if (lastError) {
+        setAudioError("Audio not available, try again momentarily.");
+        setAudioData(null);
+    }
+    
+    setIsFetchingAudio(false);
   };
   
   const handleSendChatMessage = async (e: React.FormEvent) => {
@@ -560,7 +583,7 @@ export default function App() {
                         type="text"
                         value={chatInput}
                         onChange={(e) => setChatInput(e.target.value)}
-                        placeholder="Ask a follow-up question..."
+                        placeholder="How to pronounce that or show regional dialect"
                         className="flex-grow bg-gray-700 border border-gray-600 text-white text-lg rounded-full focus:ring-blue-500 focus:border-blue-500 block w-full p-3 px-5"
                         disabled={isChatLoading || status !== 'chatting'}
                     />
